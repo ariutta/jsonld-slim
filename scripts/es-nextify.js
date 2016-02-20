@@ -162,46 +162,11 @@ falafelRx(sourceString)
   })
 //*/
 
-/*
-var equerySearch = grasp.search('equery');
-var squerySearch = grasp.search('squery');
-var equeryReplace = grasp.replace('equery');
-var squeryReplace = grasp.replace('squery');
-
-function rxGrasp() {
-  function runRxGrasp(engine, query, source) {
-    console.log('query');
-    console.log(query);
-    console.log('source');
-    console.log(source);
-    return Rx.Observable.from(grasp.search('squery', query, source))
-      .map(function(node) {
-        var nodeAsString = source.slice(node.start, node.end + 1);
-        node.source = nodeAsString;
-        node.search = function(engine, query) {
-          return runRxGrasp(engine, query, nodeAsString);
-        };
-        return node;
-      });
-  }
-
-  return {
-    searchE: equerySearch
-    }
-
-  };
-}
-//*/
-
 function run(runArgs) {
   var engine = runArgs.engine;
   var source = runArgs.source;
   var query = runArgs.query;
   var replacement = runArgs.replacement;
-  console.log('query');
-  console.log(query);
-  console.log('source.length');
-  console.log(source.length);
 
   var args = [query];
   if (replacement) {
@@ -212,8 +177,6 @@ function run(runArgs) {
   var subject = new Rx.ReplaySubject();
 
   grasp({
-    //args: 'exp-statement![expression.left.object.name=jsonld]',
-    //args: [null, null, 'exp-statement![expression.left.object.name=jsonld]'],
     args: {
       _: args,
       engine: engine,
@@ -280,13 +243,18 @@ function rxGrasp(source) {
   return wrap({}, source);
 }
 
-//*
 rxGrasp(sourceString).search('exp-statement![expression.left.object.name=jsonld]')
   .last()
+  /*
   .concatMap(function(node) {
     console.log('node');
     console.log(node);
+    //return node.search('#version');
     return node.search('#version');
+  })
+  //*/
+  .map(function(node) {
+    return node.source;
   })
   .subscribe(function(outputString) {
     console.log('outputString173');
@@ -298,4 +266,3 @@ rxGrasp(sourceString).search('exp-statement![expression.left.object.name=jsonld]
   }, function() {
     console.log('Build completed');
   });
-//*/
