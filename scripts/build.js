@@ -164,7 +164,7 @@ falafelRx(sourceString)
     return [beforeString, jsonldString, afterString].join('\n\n');
   })
   .subscribe(function(outputString) {
-    var destPath = path.join(__dirname, '..', 'auto-generated', 'jsonld.js');
+    var destPath = path.join(__dirname, '..', 'dist', 'jsonld.js');
     fs.writeFileSync(destPath, outputString, {encoding: 'utf8'});
   }, function(err) {
     throw err;

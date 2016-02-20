@@ -1,9 +1,9 @@
 var spawn = require('child_process').spawn;
 
 var mochaPath = './node_modules/mocha/bin/mocha';
-var testPath = './auto-generated/tests/test.js';
+var testPath = './dist/tests/test.js';
 
-process.env.JSDIR = '../auto-generated';
+process.env.JSDIR = '../dist';
 
 var mocha = spawn(
     'node',
