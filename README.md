@@ -24,10 +24,14 @@ npm install
 ```
 
 IN PROGRESS:
+TODO: clean up the weird jsonldCompact stuff (so we can properly use jsonld.compact, not jsonld.jsonldCompact as we do at the moment)
+      test further
+      get an example working showing the tree shaking size reduction
 ```
 git clone https://github.com/ariutta/jsonld-next.git
 cd jsonld-next
 npm install
+
 node ./scripts/es-nextify.js
 rollup -c -o ./bundle.js
 node ./trye.js

@@ -1,5 +1,22 @@
+/*
+ * 1) Create a module that exports every publicly available element (functions, variables, etc.),
+ *    including an export for every property if the publicly available elements are made available
+ *    as properties.
+ *    Also create a module for every element at the same level as the main export or higher.
+ * 2) For every created module, import its dependencies.
+ */
+
+
+// find all publicly available methods, e.g., jsonld.compact
+// rename "jsonld.compact =" in source to "var jsonldCompact ="
+// rename jsonld.compact everywhere else in source to jsonldCompact
+// split out jsonldCompact into its own file and append "export default jsonldCompact"
+// any modules that depend on jsonldCompact need to import it
+//
+// do the same for Processor.prototype, e.g., "Processor.prototype.compact" and "Processor().compact"
+// do similar for top-level methods, e.g., "_getInitialContext"
+
 var _ = require('lodash');
-var falafel = require('falafel');
 var fs = require('fs');
 var grasp = require('grasp');
 var path = require('path');
@@ -7,18 +24,8 @@ var Rx = require('rx');
 var strcase = require('tower-strcase');
 
 var version = 'dev';
-
-function falafelRx(code, opts) {
-  opts = opts || {};
-  var subject = new Rx.ReplaySubject();
-  var result = falafel(code, opts, function(node) {
-    subject.onNext(node);
-    if (node.type === 'Program') {
-      subject.onCompleted();
-    }
-  });
-  return subject;
-}
+var libraryName = 'jsonld';
+var mainModuleName = 'esNextifiedMain';
 
 var beforeString = fs.readFileSync(path.join(__dirname, '..', 'lib', 'before.js'));
 var afterString = fs.readFileSync(path.join(__dirname, '..', 'lib', 'after.js'));
@@ -28,143 +35,6 @@ var neededFunctions = [
 ];
 var sourcePath = path.join(__dirname, '..', 'node_modules', 'jsonld', 'js', 'jsonld.js');
 var sourceString = fs.readFileSync(sourcePath, {encoding: 'utf8'});
-/*
-falafelRx(sourceString)
-  .filter(function(node) {
-    //grasp '[test =#_nodejs]' ./node_modules/jsonld/js/jsonld.js
-    if (node.test && node.test.name === '_nodejs') {
-      return false;
-    }
-
-    //grasp 'var-dec[id=#wrapper][init=func-exp].init.body>*' ./node_modules/jsonld/js/jsonld.js
-    return node.id && (node.id.name === 'wrapper') && node.init && node.init.body &&
-      node.init.type === 'FunctionExpression' && node.init.body.body;
-  })
-  .reduce(function(accumulator, node) {
-    accumulator = accumulator.concat(
-      node.init.body.body
-        .filter(function(item) {
-          //console.log('**********************************');
-          //console.log(item.source());
-          if (item.argument && item.argument.name === 'jsonld') {
-            return false;
-          }
-
-          if (item.test && item.test.name === '_nodejs') {
-            return false;
-          }
-
-          if (item.expression && item.expression.callee) {
-            var callee = item.expression.callee;
-            if (callee.object && callee.object.name === 'jsonld' &&
-                callee.property && callee.property.name === 'promises') {
-              return false;
-            }
-          }
-
-          if (item.expression && item.expression.left) {
-            var left = item.expression.left;
-
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'promises') {
-              return false;
-            }
-            if (left.object && left.object.object && left.object.object.object &&
-                left.object.object.object.name === 'jsonld' &&
-                left.object.object.property &&
-                left.object.object.property.name === 'promises') {
-              return false;
-            }
-
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'RequestQueue') {
-              return false;
-            }
-            if (left.object && left.object.object && left.object.object.object &&
-                left.object.object.object.name === 'jsonld' &&
-                left.object.object.property &&
-                left.object.object.property.name === 'RequestQueue') {
-              return false;
-            }
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'promisify') {
-              return false;
-            }
-            if (left.object && left.object.name === 'JsonLdProcessor' &&
-                left.property && left.property.name === 'prototype') {
-              return false;
-            }
-
-            if (left.object && left.object.object &&
-                left.object.object.name === 'jsonld' &&
-                left.object.property &&
-                left.object.property.name === 'documentLoaders'
-//                left.object.property.name === 'documentLoaders' &&
-//                left.property &&
-//                (left.property.name === 'jquery' ||
-//                  left.property.name === 'xhr')
-                ) {
-              return false;
-            }
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'documentLoaders') {
-              return false;
-            }
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'useDocumentLoader') {
-              return false;
-            }
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'documentLoader') {
-              return false;
-            }
-            if (left.object && left.object.name === 'jsonld' &&
-                left.property && left.property.name === 'loadDocument') {
-              return false;
-            }
-          }
-          return item.source;
-        })
-        .map(function(item) {
-          return item.source();
-        })
-    );
-
-    return accumulator;
-  }, [])
-  .map(function(chunks) {
-    return chunks.join('\n')
-  })
-  .map(function(outputString) {
-    return outputString.replace(/var\ promise\ =\ /g, '');
-      //.replace(/jsonld\.documentLoaders\.node/g, 'jsonld.documentLoaderCreator')
-      //.replace(/var\ http\ \=\ require\('http'\);/g, '')
-      //.replace(/http.STATUS_CODES/g, 'nodeStatusCodes');
-  })
-  .map(function(outputString) {
-    return grasp.replace('squery', 'if!.test #promise', ' ', outputString);
-  })
-  .map(function(outputString) {
-    return grasp.replace('squery', 'Statement! > AssignmentExpression #DocumentCache', ' ', outputString);
-  })
-  .map(function(outputString) {
-    return grasp.replace('squery',
-        'exp-statement!' +
-            '[expression.left.object.name=jsonld][expression.left.property.name=objectify]',
-        ' ',
-        outputString);
-  })
-  // TODO
-  .map(function(outputString) {
-    return grasp.replace('squery',
-        'member[object.name=jsonld].property[name=loadDocument]',
-        'documentLoader',
-        outputString);
-  })
-  .map(function(jsonldString) {
-    return [beforeString, jsonldString, afterString].join('\n\n');
-  })
-//*/
 
 function run(options) {
   var engine = options.engine;
@@ -177,41 +47,19 @@ function run(options) {
     engine: engine,
     json: true
   };
-  //*
   if (replacement) {
     if (typeof replacement === 'function') {
       args.replaceFunc = replacement;
     } else {
       args.replace = replacement;
     }
-    //args.push(replacement);
-  } else {
-    //args.json = true;
   }
-  //*/
   
   var subject = new Rx.ReplaySubject();
 
   grasp({
     args: args,
     input: source,
-    /*
-    callback: function(result) {
-      console.log(result);
-      console.log('^result');
-      console.log('result.length');
-      console.log(result.length);
-      if (typeof result === 'string') {
-        return subject.onNext(result);
-      } else {
-        JSON.parse(result).forEach(function(item) {
-          console.log('item.length');
-          console.log(item.length);
-          subject.onNext(item);
-        });
-      }
-    },
-    //*/
     error: function(err) {
       subject.onError(err);
     },
@@ -274,179 +122,449 @@ function rxGrasp(source) {
   return wrap({}, source);
 }
 
-// find all publicly available methods, e.g., jsonld.compact
-// rename "jsonld.compact =" in source to "var jsonldCompact ="
-// rename jsonld.compact everywhere else in source to jsonldCompact
-// split out jsonldCompact into its own file and append "export default jsonldCompact"
-// any modules that depend on jsonldCompact need to import it
-//
-// do the same for Processor.prototype, e.g., "Processor.prototype.compact" and "Processor().compact"
-// do similar for top-level methods, e.g., "_getInitialContext"
+function getNamedElementName(input) {
+  var namedKeyCandidateLists = [
+    ['name'],
+    ['object'],
+    ['id'],
+    ['left', 'callee'],
+    ['declarations'],
+    ['expression']
+  ];
 
-function getModuleName(node) {
-  if (node && node.object && node.property) {
-    var objectName = node.object.name;
-    var propertyName = node.property.name;
-    var name = strcase.camelCase(objectName + '.' + propertyName);
-    return name;
-  } else if (node.id && node.id.name) {
-    return node.id.name;
+  var inputKeys = _.keys(input);
+
+  var matchingList = _.find(namedKeyCandidateLists, function(namedKeyCandidateList) {
+    return _.intersection(inputKeys, namedKeyCandidateList).length > 0;
+  });
+
+  var matchingKey = _.head(_.intersection(matchingList, inputKeys));
+  var matchingPropertyValue = input[matchingKey];
+
+  if (matchingKey === 'declarations') {
+    matchingPropertyValue = matchingPropertyValue[0];
+    if (matchingPropertyValue.length > 1) {
+      throw new Error('Cannot handle multiple inline variable declarations.');
+    }
+  }
+
+  if (matchingKey === 'name') {
+    return matchingPropertyValue;
+  } else if (matchingKey === 'id' && !matchingPropertyValue) {
+    return;
   } else {
-    console.log('node');
-    console.log(node);
-    throw new Error('getModuleName');
+    return getNamedElementName(matchingPropertyValue);
   }
 }
 
-//rxGrasp(sourceString).search('assign.left! [name=jsonld],var-dec[id=#wrapper][init=func-exp].init.body > var-decs > var-dec')
-var firstSearchString = 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement > assign[left.object.name] > assign.left,' +
-    'var-dec[id=#wrapper][init=func-exp].init.body > func-dec,' +
-    'var-dec[id=#wrapper][init=func-exp].init.body > var-decs > var-dec'
-rxGrasp(sourceString).search(firstSearchString)
-  .toArray()
-  .concatMap(function(nodes) {
-    var moduleNames = _.uniq(
-        _.map(nodes, getModuleName)
-    );
+function getNamedElementParent(input, previousInput) {
+  var namedKeyCandidateLists = [
+    ['name'],
+    ['object'],
+    ['id'],
+    ['left', 'callee'],
+    ['declarations'],
+    ['expression']
+  ];
 
-    var prefixNames = _.uniq(
-        _.filter(nodes, function(node) {
-          return node.object && node.object.name;
-        })
-        .map(function(node) {
-          return node.object.name;
-        })
-    );
+  var inputKeys = _.keys(input);
 
-    console.log('prefixNames');
-    console.log(prefixNames);
+  var matchingList = _.find(namedKeyCandidateLists, function(namedKeyCandidateList) {
+    return _.intersection(inputKeys, namedKeyCandidateList).length > 0;
+  });
 
-    console.log('moduleNames');
-    console.log(moduleNames);
+  var matchingKey = _.head(_.intersection(matchingList, inputKeys));
+  var matchingPropertyValue = input[matchingKey];
 
-    return rxGrasp(sourceString).replace('var-dec[id=#wrapper][init=func-exp].init.body > exp-statement > assign[left.object.name] > assign.left', function(getRaw, node, query) {
-        return 'var ' + getModuleName(node);
-      })
-      .last()
-      .concatMap(function(node) {
-        //return rxGrasp(node.source).replace('member! > ([name=jsonld],[name=Processor])', function(getRaw, node, query) {
-        return rxGrasp(node.source).replace('member! > [name=jsonld]', function(getRaw, node, query) {
-            return getModuleName(node);
-          });
-      })
-      .concatMap(function(node) {
-        return rxGrasp(node.source).replace('var-decs! > var-dec[id=#jsonldDocumentLoader]', function(getRaw, node, query) {
-            var newText = fs.readFileSync(__dirname + '/../lib/jsonldDocumentLoader.js', {encoding: 'utf8'});
-            return newText;
-          });
-      })
-      .concatMap(function(node) {
-        return rxGrasp(node.source).replace('exp-statement! > assign #jsonldDocumentLoader', function(getRaw, node, query) {
-            return '';
-          });
-      })
-      .doOnNext(function(node) {
-        moduleNames
-          .forEach(function(currentModuleName) {
-            var currentModuleSearchString = 'var-decs! > var-dec[id=#' + currentModuleName + '],' +
-                'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=' + currentModuleName + '],' +
-                'func-dec[id=#' + currentModuleName + '],' +
-                'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign [object.name=' + currentModuleName + ']'
-            rxGrasp(node.source).search(currentModuleSearchString)
-              .filter(function(currentModuleNode) {
-                return !!currentModuleNode && !!currentModuleNode.source;
-              })
-              .map(function(currentModuleNode) {
-                return currentModuleNode.source;
-              })
-              .toArray()
-              .subscribe(function(result) {
-                var bodyString = result.join('\n');
+  if (matchingKey === 'declarations') {
+    matchingPropertyValue = matchingPropertyValue[0];
+    if (matchingPropertyValue.length > 1) {
+      throw new Error('Cannot handle multiple inline variable declarations.');
+    }
+  }
 
-                var importSection = moduleNames
-                  .filter(function(moduleName) {
-                    return moduleName !== currentModuleName;
-                  })
-                  .filter(function(moduleName) {
-                    return bodyString.indexOf(moduleName) > -1;
-                  })
-                  .map(function(importedModuleName) {
-                    //return 'import ' + importedModuleName + ' from \'./' + importedModuleName + '\';';
-                    return 'import {' + importedModuleName + '} from \'./' + importedModuleName + '\';';
-                  });
-
-                var exportSection = [];
-                if (bodyString.indexOf('var ' + currentModuleName) > -1) {
-                  bodyString = bodyString.replace('var ' + currentModuleName, 'export const ' + currentModuleName)
-                } else if (bodyString.indexOf('const ' + currentModuleName) > -1) {
-                  bodyString = bodyString.replace('const ' + currentModuleName, 'export const ' + currentModuleName)
-                } else if (bodyString.indexOf('function ' + currentModuleName) > -1) {
-                  bodyString = bodyString.replace('function ' + currentModuleName, 'export const ' + currentModuleName + ' = function')
-                } else {
-                  exportSection.push('export const ' + currentModuleName + ' = ' + currentModuleName + ';');
-                }
-                //var moduleString = importSection.concat([bodyString]).concat(['export default ' + currentModuleName + ';']).join('\n');
-                var moduleString = importSection.concat([bodyString]).concat(exportSection).join('\n');
-
-                fs.writeFileSync('./dist/' + version + '/' + currentModuleName + '.js', moduleString, {encoding: 'utf8'});
-              }, function(err) {throw err;});
-          });
-      });
-  })
-//  .doOnCompleted(function() {
-//
-//  })
-////rxGrasp(sourceString).replace('exp-statement![expression.left.object.name=jsonld]', 'var a = 1;')
-////rxGrasp(sourceString).replace('#factory', 'wee')
-//  //*
-//  .concatMap(function(node) {
-//    return node.replace('assign.left! > [name=jsonld]', function(getRaw, node, query) {
-//        var propertyName = node.property.name;
-//        var methodName = strcase.camelCase('jsonld.' + propertyName);
-//        return 'var ' + methodName + ' = ';
-//      });
-//  })
-//  .doOnNext(function(nodes) {
-//    var replaced = '';
-//    Rx.Observable.from(_.uniq(
-//        _.map(nodes, function(node) {
-//          return node.property.name;
-//        })
-//    ))
-//    .concatMap(function(propertyName) {
-//      console.log('propertyName');
-//      console.log(propertyName);
-//      //return propertyName;
-//      rxGrasp(sourceString).replace('assign.left! > [name=jsonld]', function(getRaw, node, query) {
-//          var propertyName = node.property.name;
-//          var methodName = strcase.camelCase('jsonld.' + propertyName);
-//          return 'var ' + methodName + ' = ';
-//        })
-//        .subscribe(function(result) {
-//          console.log('result');
-//          console.log(result);
-//        }, function(err) {throw err;});
-//    });
-//  })
-  //*/
   /*
+  if (matchingPropertyValue && matchingPropertyValue.name && matchingPropertyValue.name === 'Processor') {
+    console.log('input');
+    console.log(input);
+  }
+  //*/
+
+  // TODO still not handling prototypes quite right, e.g., Processor.prototype.alskdn
+  if ((matchingKey === 'name') || (matchingKey === 'id' && !matchingPropertyValue)) {
+    return previousInput;
+  } else {
+    return getNamedElementParent(matchingPropertyValue, input);
+  }
+}
+
+function getModuleAndExportNames(node) {
+  var namedElementParent = getNamedElementParent(node);
+  var topLevelName = namedElementParent.object && namedElementParent.object.name && namedElementParent.object.name;
+  var secondLevelName;
+  var moduleName;
+  var exportName;
+  if (topLevelName) {
+    moduleName = topLevelName;
+    secondLevelName = namedElementParent.property && namedElementParent.property.name && namedElementParent.property.name;
+    if (secondLevelName !== 'prototype') {
+      exportName = secondLevelName;
+    }
+  } else {
+    moduleName = getNamedElementName(node) || mainModuleName;
+  }
+
+  return {
+    moduleName: moduleName,
+    exportName: exportName
+  };
+}
+
+/*
+function getNamedProperty(input) {
+  var namedKeyCandidateLists = [
+    ['property'],
+    ['object'],
+    ['id'],
+    ['left', 'callee'],
+    ['expression']
+  ];
+
+  var inputKeys = _.keys(input);
+
+  var matchingList = _.find(namedKeyCandidateLists, function(namedKeyCandidateList) {
+    return _.intersection(inputKeys, namedKeyCandidateList).length > 0;
+  });
+
+  var matchingKey = _.head(_.intersection(matchingList, inputKeys));
+  var matchingProperty = input[matchingKey];
+  if (matchingKey === 'property' && matchingProperty.name) {
+    return matchingProperty.name;
+  } else if (matchingKey === 'id' && !matchingProperty) {
+    return;
+  } else if (matchingKey) {
+    return getNamedProperty(matchingProperty);
+  }
+}
+//*/
+
+/*
+function getExportName(mainModuleName, node) {
+  var name = getNamedProperty(node);
+  if (name) {
+    return name;
+  } else {
+    return getModuleName(mainModuleName, node);
+  }
+}
+//*/
+
+//rxGrasp(sourceString).search('assign.left! [name=jsonld],var-dec[id=#wrapper][init=func-exp].init.body > var-decs > var-dec')
+
+var topLevelSelector = 'var-dec[id=#wrapper][init=func-exp].init.body';
+
+rxGrasp(sourceString).replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=documentLoader]', function(getRaw, node, query) {
+    var newText = fs.readFileSync(__dirname + '/../lib/documentLoader.js', {encoding: 'utf8'});
+    return newText;
+  })
   .concatMap(function(node) {
-    console.log('node');
-    console.log(node);
-    //return node.search('#version');
-    return node.replace('#version', 'wee');
+    // var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoaders]
+    return node.replace(topLevelSelector + ' > exp-statement! > assign > assign.left [name=documentLoaders]', function(getRaw, node, query) {
+      return '';
+    });
+  })
+  .concatMap(function(node) {
+    return node.replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=useDocumentLoader]', function(getRaw, node, query) {
+      return '';
+    });
+  })
+  .concatMap(function(node) {
+    return node.replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=loadDocument]', function(getRaw, node, query) {
+      return '';
+    });
+  })
+  .concatMap(function(node) {
+    return node.replace(topLevelSelector + ' assign.right member > [name=loadDocument]', function(getRaw, node, query) {
+      return 'documentLoader';
+    });
+  })
+  .concatMap(function(node) {
+    // make sure we don't clobber anything when we "de-property-ize" the public properties
+    return node.search(topLevelSelector + ' assign [object.name=' + libraryName + '].property')
+      .toArray()
+      .map(function(nodes) {
+        return _.uniq(
+            _.filter(nodes, function(node) {
+              return node.name;
+            })
+            .map(function(node) {
+              return node.name;
+            })
+        )
+        .reduce(function(accumulator, publicPropertyName) {
+          var publicPropertyNameRe = new RegExp('([^jsonld\\.]|^)(' + publicPropertyName + ')(\\W|$)', 'gm');
+          return accumulator.replace(publicPropertyNameRe, '$1_esnextifiedPrivate' + publicPropertyName + '$3');
+        }, node.source);
+      })
+      /*
+      .concatMap(function(nodes) {
+        var publicPropertyNames = _.uniq(
+            _.filter(nodes, function(node) {
+              return node.name;
+            })
+            .map(function(node) {
+              return node.name;
+            })
+        );
+        console.log('publicPropertyNames');
+        console.log(publicPropertyNames);
+
+        var publicPropertyNameFinderString = publicPropertyNames.map(function(publicPropertyName) {
+          //'var-decs! > var-dec[id=#' + publicPropertyName + '],'
+          return 'func-exp [id=#' + publicPropertyName + '].id,' +
+            '[callee] > [name=' + publicPropertyName + '],' +
+            'assign [object.name=' + publicPropertyName + '].object,' +
+            'assign > [name=' + publicPropertyName + ']';
+        })
+        .join(',');
+
+        console.log('publicPropertyNameFinderString');
+        console.log(publicPropertyNameFinderString);
+        return node.replace(publicPropertyNameFinderString, function(getRaw, node, query) {
+          return '_esnextifiedPrivate' + node.name;
+        });
+      });
+      //*/
   })
   //*/
-  //*
-  //*/
-  .map(function(node) {
-    return node.source;
+  .concatMap(function(nodeSource) {
+    fs.writeFileSync('./output.js', nodeSource, {encoding: 'utf8'});
+
+    var moduleCandidatesSearchStrings = [
+      topLevelSelector + ' > exp-statement',
+      topLevelSelector + ' > func-dec',
+      topLevelSelector + ' > var-decs! > var-dec',
+    ];
+    var moduleCandidatesSearchString = moduleCandidatesSearchStrings.join(',');
+
+    return rxGrasp(nodeSource).search(moduleCandidatesSearchString)
+      .toArray()
+      .concatMap(function(nodes) {
+        var moduleElementsByModule = _.reduce(nodes, function(accumulator, node) {
+          if (node.type === 'VariableDeclarator') {
+            console.log('node');
+            console.log(node);
+          }
+          var moduleAndExportNames = getModuleAndExportNames(node);
+          var moduleName = moduleAndExportNames.moduleName;
+          var exportName = moduleAndExportNames.exportName;
+          accumulator[moduleName] = accumulator[moduleName] || [];
+          var moduleElements = accumulator[moduleName];
+          var exportedElement = _.find(moduleElements, function(element) {
+            return element.exportName === exportName;
+          });
+
+          if (!exportedElement) {
+            moduleElements.push({
+              moduleName: moduleName,
+              exportName: exportName,
+              source: node.source
+            });
+          } else {
+            exportedElement.source += '\n' + node.source + '\n';
+          }
+
+          return accumulator;
+        }, {});
+
+        //*
+        var moduleAndExportNames = _.toPairs(moduleElementsByModule)
+          .map(function(pair) {
+            var result = {};
+            result[pair[0]] = pair[1].map(function(item) {
+              return item.exportName;
+            });
+            return result;
+          });
+        console.log('moduleAndExportNames');
+        console.log(moduleAndExportNames);
+        //*/
+
+        /*
+        var reSelectors = _.uniq(
+          _.toPairs(moduleElementsByModule)
+            .reduce(function(accumulator, pair) {
+              var moduleName = pair[0];
+              var exportNames = pair[1].map(function(item) {
+                return item.exportName;
+              });
+              return accumulator.concat(exportNames.map(function(exportName) {
+                if (!exportName) {
+                  return '(\\W|^)(' + moduleName + ')(\\W|$)';
+                } else {
+                  return '(\\W|^)(' + moduleName + '\\.' + exportName + ')(\\W|$)';
+                }
+              }));
+            }, [])
+        );
+        //*/
+
+        /*
+        var graspSelectors = _.uniq(
+          _.toPairs(moduleElementsByModule)
+            .reduce(function(accumulator, pair) {
+              var moduleName = pair[0];
+              var exportNames = pair[1].map(function(item) {
+                return item.exportName;
+              });
+              return accumulator.concat(exportNames.map(function(exportName) {
+                if (!exportName) {
+                  return '#' + moduleName
+                } else {
+                  return '[object.name=' + moduleName + '] [property.name=' + exportName + ']'
+                }
+              }));
+            }, [])
+        );
+        console.log('graspSelectors');
+        console.log(graspSelectors);
+        var selectorFinderString = graspSelectors.join(',');
+        //*/
+
+        var sourcesByModule = _.toPairs(moduleElementsByModule)
+          .reduce(function(accumulator, pair) {
+            var moduleName = pair[0];
+            var moduleElements = pair[1];
+            if (moduleName === libraryName) {
+              accumulator[moduleName] = moduleElements
+                .map(function(moduleElement) {
+                  var exportName = moduleElement.exportName;
+                  var source = moduleElement.source;
+                  if (moduleElements.length === 1) {
+                    return 'export default ' + source;
+                  } else {
+                    if (!exportName) {
+                      return '\n' + source + '\n';
+                    } else {
+                      return source + '\n' + 'export var ' + exportName + ' = ' + moduleName + '.' + exportName + ';\n';
+                    }
+                  }
+                })
+                .join('\n');
+            } else {
+              accumulator[moduleName] = moduleElements
+                .map(function(moduleElement) {
+                  return moduleElement.source;
+                })
+                .join('\n') + '\n\nexport default ' + moduleName + ';';
+            }
+            return accumulator;
+          }, {});
+
+        //return Rx.Observable.return([{source: ''}]);
+        var moduleNames = _.keys(moduleElementsByModule);
+        return Rx.Observable.pairs(sourcesByModule)
+          .concatMap(function(pair) {
+            var moduleName = pair[0];
+            var source = pair[1];
+
+            /*
+            return Rx.Observable.from(moduleAndExportNames)
+              .concatMap(function(moduleElement) {
+                return Rx.Observable.pairs(moduleElement)
+              })
+              .filter(function(pair) {
+                return pair[0] !== moduleName;
+              })
+              .reduce(function(accumulator, pair) {
+                var iteratorModuleName = pair[0];
+                var exportNames = pair[1];
+                console.log('exportNames');
+                console.log(exportNames);
+                var re;
+                return exportNames.reduce(function(subAccumulator, exportName) {
+                  if (!exportName) {
+                    re = new RegExp('(\\W|^)(' + iteratorModuleName + ')(\\W|$)', 'gm');
+                    if (re.test(source)) {
+                      return 'import ' + iteratorModuleName + ' from \'./' + iteratorModuleName + '\';\n' + subAccumulator;
+                    } else {
+                      return subAccumulator;
+                    }
+                  } else {
+                    re = new RegExp('(\\W|^)(' + iteratorModuleName + '\\.' + exportName + ')(\\W|$)', 'gm');
+                    if (re.test(source)) {
+                      return 'import * as ' + exportName + ' from \'./' + iteratorModuleName + '\';\n' + subAccumulator;
+                      //return 'import {' + exportName + '} as ' + exportName + ' from \'./' + iteratorModuleName + '\';\n' + subAccumulator;
+                      //return 'import {' + exportName + '} from \'./' + iteratorModuleName + '\';\n' + subAccumulator;
+                    } else {
+                      return subAccumulator;
+                    }
+                  }
+                }, accumulator);
+              }, source)
+              .map(function(updateSource) {
+                return {
+                  moduleName: moduleName,
+                  source: updateSource
+                };
+              });
+              //*/
+
+            //*
+            return Rx.Observable.from(moduleNames)
+              .filter(function(iteratorModuleName) {
+                return iteratorModuleName !== moduleName;
+              })
+              .reduce(function(accumulator, iteratorModuleName) {
+                var re = new RegExp('(\\W|^)(' + iteratorModuleName + ')(\\W|$)', 'gm');
+                if (re.test(source)) {
+                  if (iteratorModuleName === libraryName) {
+                    return 'import * as ' + iteratorModuleName + ' from \'./' + iteratorModuleName + '\';\n' + accumulator;
+                  } else {
+                    return 'import ' + iteratorModuleName + ' from \'./' + iteratorModuleName + '\';\n' + accumulator;
+                  }
+                } else {
+                  return accumulator
+                }
+              }, source)
+              .map(function(updateSource) {
+                return {
+                  moduleName: moduleName,
+                  source: updateSource
+                };
+              });
+            //*/
+
+            /*
+            return rxGrasp(source).replace(selectorFinderString, function(getRaw, node, query) {
+                var moduleAndExportNames = getModuleAndExportNames(node);
+                var moduleName = moduleAndExportNames.moduleName;
+                var exportName = moduleAndExportNames.exportName;
+                return 'import ' + exportName + ' from \'./' + moduleName + '\';\n' + node.source;
+              })
+              .map(function(node) {
+              return node.source;
+              });
+            //*/
+          });
+      })
   })
-  .subscribe(function(outputString) {
+  .toArray()
+  .subscribe(function(outputs) {
     //console.log(outputString);
     //console.log('^outputString173');
-    var destPath = path.join(__dirname, '..', 'dist', 'jsonld.esnext.js');
-    //fs.writeFileSync(destPath, outputString, {encoding: 'utf8'});
+    outputs.forEach(function(output) {
+      var moduleName = output.moduleName;
+      var source = output.source;
+      var destPath = path.join(__dirname, '..', 'dist', version, moduleName + '.js');
+      fs.writeFileSync(destPath, source, {encoding: 'utf8'});
+    });
+
+    var oneOutputString = outputs.map(function(output) {
+      return output.source;
+    })
+    .join('\n\n\n\\\\break\n\n\n\n\n');
+    fs.writeFileSync('./output.js', oneOutputString, {encoding: 'utf8'});
   }, function(err) {
     throw err;
   }, function() {
@@ -454,9 +572,9 @@ rxGrasp(sourceString).search(firstSearchString)
   });
 
 /*
-rxGrasp(sourceString).replace('exp-statement![expression.left.object.name=jsonld]', function(getRaw, node, query) {
+rxGrasp(sourceString).replace('exp-statement![expression.left.object.name=' + libraryName + ']', function(getRaw, node, query) {
     var propertyName = node.expression.left.property.name;
-    var methodName = strcase.camelCase('jsonld.' + propertyName);
+    var methodName = strcase.camelCase(libraryName + '.' + propertyName);
     return 'import ' + methodName + ' from \'./' + methodName + '\';';
   })
   .map(function(node) {
@@ -465,7 +583,7 @@ rxGrasp(sourceString).replace('exp-statement![expression.left.object.name=jsonld
   .subscribe(function(outputString) {
     console.log(outputString);
     console.log('^outputString173');
-    var destPath = path.join(__dirname, '..', 'dist', 'jsonld.esnext.js');
+    var destPath = path.join(__dirname, '..', 'dist', libraryName + '.esnext.js');
     //fs.writeFileSync(destPath, outputString, {encoding: 'utf8'});
   }, function(err) {
     throw err;
@@ -519,5 +637,28 @@ rxGrasp(sourceString).replace('exp-statement![expression.left.object.name=jsonld
 //
 // grasp 'var-dec[id=#wrapper][init=func-exp].init.body assign.left! [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
 // grasp 'var-dec[id=#wrapper][init=func-exp].init.body assign.left! [name=jsonldDocumentLoader]' ./jsonldDocumentLoaderTest.js
+// grasp '#compact' ./node_modules/jsonld/js/jsonld.js
+//
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoader]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body #documentLoaders' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign > assign.left [name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
+//
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld] > assign ([left.object.name=documentLoaders],[left.property.name=documentLoaders])' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! [left.object.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=loadDocument]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=jsonld] > assign[left.object.name=jsonld][left.property.name=loadDocument]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=IdentifierIssuer]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=IdentifierIssuer]' ./node_modules/jsonld/js/jsonld.js
+//
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > [object.name=Processor] [property.name=expand]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement #Processor' ./node_modules/jsonld/js/jsonld.js
+// grasp '#_removeEmbed' ./node_modules/jsonld/js/jsonld.js
+//
+// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > var-decs! > var-dec' ./node_modules/jsonld/js/jsonld.js
 //
 // rollup -c -o ./bundle.js
