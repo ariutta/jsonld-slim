@@ -240,7 +240,6 @@ function getFirstAndSecondNames(node) {
 var topLevelSelector = 'var-dec[id=#wrapper][init=func-exp].init.body';
 
 var cleanSourceString = sourceString
-      //.replace(/jsonld\.documentLoaders\.node/g, 'jsonld.documentLoaderCreator')
       .replace(/var\ http\ \=\ require\('http'\);/g, '')
       .replace(/(^|[^\\-\\w\'\"\\.])(http.STATUS_CODES)(\\W|$)/g, '$1nodeStatusCodes$3');
 
@@ -278,68 +277,115 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
       return 'documentLoader';
     });
   })
+//  .concatMap(function(node) {
+//    // make sure we don't clobber anything when we "de-property-ize" the public properties
+//    return node.search(topLevelSelector + ' assign [object.name=' + libraryName + '].property')
+//      .toArray()
+//      .map(function(nodes) {
+//        return _.uniq(
+//            _.filter(nodes, function(node) {
+//              return node.name;
+//            })
+//            .map(function(node) {
+//              return node.name;
+//            })
+//        )
+//        .reduce(function(accumulator, publicPropertyName) {
+//          return accumulator;
+//          var publicPropertyNameRe = new RegExp('([\'\"]?)([^\'\"]*)([^\\-\\w\'\"\\.@])(' + publicPropertyName + ')([^\\w:\\-])([^\'\"]*)(\\1)?', 'gm');
+//          var publicPropertyNameInStringRe = new RegExp('(\'|\")([^\'\"]*)(' + publicPropertyName + ')([^\'\"]*)(\\1)', 'gm');
+//          var publicPropertyNameInStringMatches = accumulator.match(publicPropertyNameInStringRe);
+//          /*
+//          if (publicPropertyNameInStringMatches) {
+//            var firstMatch = publicPropertyNameInStringMatches[0];
+//            if (firstMatch[0] === '\'') {
+//              firstMatch = '"' + firstMatch.slice(1, -1) + '"';
+//            }
+//            var dummyJsonString = '{"a":' + firstMatch + '}';
+//            try {
+//              //var isString = _.isString(eval(firstMatch));
+//              var isString = _.isString(JSON.parse(dummyJsonString).a);
+//              return accumulator;
+//            }
+//            catch(e) {
+//              throw e;
+//            }
+//          }
+//          //*/
+//          //return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
+//          return accumulator.replace(publicPropertyNameRe, function(match, p1, p2, p3, p4, p5, p6, p7, offset, str) {
+//            if (p4 === 'link' || p4 === 'link') {
+//              console.log('**********************************************************************');
+//              console.log('match');
+//              console.log(match);
+//              console.log('publicPropertyNameInStringMatches');
+//              console.log(publicPropertyNameInStringMatches);
+//              console.log('p1');
+//              console.log(p1);
+//              console.log('p2');
+//              console.log(p2);
+//              console.log('p3');
+//              console.log(p3);
+//              console.log('p4');
+//              console.log(p4);
+//              console.log('p5');
+//              console.log(p5);
+//              console.log('p6');
+//              console.log(p6);
+//              console.log('p7');
+//              console.log(p7);
+//              console.log('offset');
+//              console.log(offset);
+//            }
+//            if (p1 === '\'' || p1 === '"') {
+//              console.log('skipmatch');
+//              console.log(match);
+//              return match;
+//            }
+//            var beforeString = [p1, p2, p3].join('');
+//            var afterString = [p4, p5, p6, p7].join('');
+//            var result = beforeString + declobberNamespace + afterString;
+//            if (p4 === 'link' || p4 === 'link') {
+//              console.log('result');
+//              console.log(result);
+//            }
+//            return result;
+//          });
+//        }, node.source);
+//      })
+//      /*
+//      .concatMap(function(nodes) {
+//        var publicPropertyNames = _.uniq(
+//            _.filter(nodes, function(node) {
+//              return node.name;
+//            })
+//            .map(function(node) {
+//              return node.name;
+//            })
+//        );
+//        console.log('publicPropertyNames');
+//        console.log(publicPropertyNames);
+//
+//        var publicPropertyNameFinderString = publicPropertyNames.map(function(publicPropertyName) {
+//          //'var-decs! > var-dec[id=#' + publicPropertyName + '],'
+//          return 'func-exp [id=#' + publicPropertyName + '].id,' +
+//            '[callee] > [name=' + publicPropertyName + '],' +
+//            'assign [object.name=' + publicPropertyName + '].object,' +
+//            'assign > [name=' + publicPropertyName + ']';
+//        })
+//        .join(',');
+//
+//        console.log('publicPropertyNameFinderString');
+//        console.log(publicPropertyNameFinderString);
+//        return node.replace(publicPropertyNameFinderString, function(getRaw, node, query) {
+//          return declobberNamespace + node.name;
+//        });
+//      });
+//      //*/
+//  })
+//  //*/
   .concatMap(function(node) {
-    // make sure we don't clobber anything when we "de-property-ize" the public properties
-    return node.search(topLevelSelector + ' assign [object.name=' + libraryName + '].property')
-      .toArray()
-      .map(function(nodes) {
-        return _.uniq(
-            _.filter(nodes, function(node) {
-              return node.name;
-            })
-            .map(function(node) {
-              return node.name;
-            })
-        )
-        .reduce(function(accumulator, publicPropertyName) {
-          var publicPropertyNameRe = new RegExp('(^|[^\\-\\w\'\"\\.@])(' + publicPropertyName + ')([^\\w:\\-]|$)', 'gm');
-          var publicPropertyNameInStringRe = new RegExp('(\'|\")(.*)(' + publicPropertyName + ')(.*)(\\1)', 'gm');
-          var publicPropertyNameInStringMatches = accumulator.match(publicPropertyNameInStringRe);
-          if (publicPropertyNameInStringMatches) {
-            var firstMatch = publicPropertyNameInStringMatches[0];
-            try {
-              var isString = _.isString(eval(firstMatch));
-              return accumulator;
-            }
-            catch(e) {
-
-            }
-          }
-          return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
-        }, node.source);
-      })
-      /*
-      .concatMap(function(nodes) {
-        var publicPropertyNames = _.uniq(
-            _.filter(nodes, function(node) {
-              return node.name;
-            })
-            .map(function(node) {
-              return node.name;
-            })
-        );
-        console.log('publicPropertyNames');
-        console.log(publicPropertyNames);
-
-        var publicPropertyNameFinderString = publicPropertyNames.map(function(publicPropertyName) {
-          //'var-decs! > var-dec[id=#' + publicPropertyName + '],'
-          return 'func-exp [id=#' + publicPropertyName + '].id,' +
-            '[callee] > [name=' + publicPropertyName + '],' +
-            'assign [object.name=' + publicPropertyName + '].object,' +
-            'assign > [name=' + publicPropertyName + ']';
-        })
-        .join(',');
-
-        console.log('publicPropertyNameFinderString');
-        console.log(publicPropertyNameFinderString);
-        return node.replace(publicPropertyNameFinderString, function(getRaw, node, query) {
-          return declobberNamespace + node.name;
-        });
-      });
-      //*/
-  })
-  //*/
-  .concatMap(function(nodeSource) {
+    var nodeSource = node.source;
     return rxGrasp(nodeSource).search('IfStatement! > IfStatement.test[name=_nodejs]')
       .toArray()
       .doOnNext(function(nodes) {
