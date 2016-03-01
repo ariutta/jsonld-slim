@@ -33,7 +33,7 @@ cd jsonld-next
 npm install
 
 node ./scripts/es-nextify.js
-rollup -c -o ./bundle.js
+rollup -c -o ./dist/jsonld/index.js
 node ./trye.js
 ```
 

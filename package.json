@@ -3,6 +3,7 @@
   "version": "1.0.0-alpha.1",
   "description": "JSON-LD in ES.next",
   "main": "index.js",
+  "jsnext:main": "dist/jsonld/main.ecma.js",
   "scripts": {
     "build": "node ./scripts/build.js",
     "postinstall": "node ./scripts/mkdir_dist && node ./scripts/cp_-r_node_modules_jsonld_tests && npm run build",

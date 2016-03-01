@@ -282,22 +282,7 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
     // make sure we don't clobber anything when we "de-property-ize" the public properties
     return node.search(topLevelSelector + ' assign [object.name=' + libraryName + '].property')
       .toArray()
-      .map(function(nodes) {
-        return _.uniq(
-            _.filter(nodes, function(node) {
-              return node.name;
-            })
-            .map(function(node) {
-              return node.name;
-            })
-        )
-        .reduce(function(accumulator, publicPropertyName) {
-          var publicPropertyNameRe = new RegExp('(^|[^\\-\\w\'\"\\.])(' + publicPropertyName + ')(\\W|$)', 'gm');
-          var wee = accumulator.match(publicPropertyNameRe);
-          return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
-        }, node.source);
-      })
-      /*
+      //*
       .concatMap(function(nodes) {
         var publicPropertyNames = _.uniq(
             _.filter(nodes, function(node) {
@@ -311,24 +296,108 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
         console.log(publicPropertyNames);
 
         var publicPropertyNameFinderString = publicPropertyNames.map(function(publicPropertyName) {
-          //'var-decs! > var-dec[id=#' + publicPropertyName + '],'
+          return 'Identifier[name=' + publicPropertyName + ']';
+          /*
           return 'func-exp [id=#' + publicPropertyName + '].id,' +
             '[callee] > [name=' + publicPropertyName + '],' +
-            'assign [object.name=' + publicPropertyName + '].object,' +
+            'var-decs > var-dec[id=#' + publicPropertyName + '].id,' +
+            //'assign [object.name=' + publicPropertyName + '].object,' +
+            'IfStatement > IfStatement.test > (IfStatement.test.left[name=version],IfStatement.test.right[name=' + publicPropertyName + ']),' +
             'assign > [name=' + publicPropertyName + ']';
+          //*/
         })
         .join(',');
 
+        var source = node.source;
+
+        var nonPositionalOptions = [
+          ' ',
+          '=',
+          '+',
+          '-',
+          '*',
+          '/',
+          '\'',
+          '\"',
+          ','
+        ];
+        var openings = [
+          '(',
+          ':',
+          '['
+        ];
+        var closings = [
+          ')',
+          ']',
+          '.',
+          '[',
+          '(',
+          '}'
+        ];
         console.log('publicPropertyNameFinderString');
         console.log(publicPropertyNameFinderString);
-        return node.replace(publicPropertyNameFinderString, function(getRaw, node, query) {
-          return declobberNamespace + node.name;
+        return node.replace(publicPropertyNameFinderString, function(getRaw, subNode, query) {
+          var raw = getRaw(subNode);
+          var preceedingChar = source.slice(subNode.start - 1, subNode.start);          
+          var followingChar = source.slice(subNode.end, subNode.end + 1);          
+          var preceedingSection = source.slice(subNode.start - 7, subNode.start);          
+          if (preceedingSection === 'jsonld.') {
+            console.log('preceedingSection');
+            console.log(preceedingSection);
+            return raw;
+          }
+          if (openings.concat(nonPositionalOptions).indexOf(preceedingChar) === -1) {
+            return raw;
+          }
+          if (closings.concat(nonPositionalOptions).indexOf(followingChar) === -1) {
+            return raw;
+          }
+          console.log('*******************');
+          console.log('raw');
+          console.log(raw);
+          var context = source.slice(subNode.start - 5, subNode.end + 5);
+          console.log('context');
+          console.log(context);
+          console.log('preceedingChar');
+          console.log(preceedingChar);
+          console.log('followingChar');
+          console.log(followingChar);
+          var name = subNode.name;
+          return declobberNamespace + name;
         });
+      })
+      .map(function(node) {
+        return node.source;
+      });
+      //*/
+
+      /*
+      .map(function(nodes) {
+        return _.uniq(
+            _.filter(nodes, function(node) {
+              return node.name;
+            })
+            .map(function(node) {
+              return node.name;
+            })
+        )
+        .reduce(function(accumulator, publicPropertyName) {
+          var nonPositionalOptions = '\\ \\=\\+\\-\\*\\\\/\'\"';
+          var openings = '\\(\\[';
+          var closings = '\\)\\]';
+          //var publicPropertyNameRe = new RegExp('(^|[^\\-\\w\'\"(jsonld\\.)])(' + publicPropertyName + ')(\\W|$)', 'gm');
+          //var publicPropertyNameRe = new RegExp('(^|[^\\-\'\\"\\.]|(?:(?:(?:[^j].{5})|(?:[^s].{4})|(?:[^o].{3})|(?:[^n].{2})|(?:.{4}[^l].)|(?:[^d]))\\.))(' + publicPropertyName + ')(\\W|$)', 'gm');
+          //var publicPropertyNameRe = new RegExp('(\\b)(' + publicPropertyName + ')(\\b)', 'gm');
+          var publicPropertyNameRe = new RegExp('(^|[' + nonPositionalOptions + openings + '])(' + publicPropertyName + ')([' + nonPositionalOptions + closings + ']|$)', 'gm');
+          var wee = accumulator.match(publicPropertyNameRe);
+          return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
+        }, node.source);
       });
       //*/
   })
   //*/
   .concatMap(function(nodeSource) {
+    fs.writeFileSync('./output.js', nodeSource, {encoding: 'utf8'});
     return rxGrasp(nodeSource).search('IfStatement! > IfStatement.test[name=_nodejs]')
       .toArray()
       .doOnNext(function(nodes) {
@@ -366,7 +435,6 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
     return nodeSource.replace(re, '$1$3');
   })
   .concatMap(function(nodeSource) {
-    fs.writeFileSync('./output.js', nodeSource, {encoding: 'utf8'});
 
     var moduleCandidatesSearchStrings = [
       topLevelSelector + ' > exp-statement',
@@ -640,3 +708,12 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
 // grasp 'IfStatement! > IfStatement.test[left.name=_nodejs]' ./node_modules/jsonld/js/jsonld.js
 //
 // rollup -c -o ./bundle.js
+  // (^|[^\-\'\"\.]|(?:((l(?!d)|([^json]d)))\.))(link)(\W|$)
+  // (^|[^\-\'\"\.]|(?:([^l]|(json(?!l)))([^d]|((jsonl(?!d))))\.))(link)(\W|$)
+  // (^|[^\-\'\"\.]|(?:(?:(?:[^j].{5})|(?:[^s].{4})|(?:[^o].{3})|(?:[^n].{2})|(?:.{4}[^l].)|(?:[^d]))\.))(link)(\W|$)
+//           grasp 'func-exp [id=#version].id' ./node_modules/jsonld/js/jsonld.js
+//            grasp '[callee] > [name=version]' ./node_modules/jsonld/js/jsonld.js
+//            grasp 'var-decs > var-dec[id=#version].id' ./node_modules/jsonld/js/jsonld.js
+//            grasp 'assign > [name=version]' ./node_modules/jsonld/js/jsonld.js
+// grasp 'IfStatement > IfStatement.test > (IfStatement.test.left[name=version],IfStatement.test.right[name=version])' ./node_modules/jsonld/js/jsonld.js
+// grasp 'Identifier' ./node_modules/jsonld/js/jsonld.js
