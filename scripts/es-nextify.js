@@ -291,7 +291,8 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
 //            })
 //        )
 //        .reduce(function(accumulator, publicPropertyName) {
-//          return accumulator;
+  //        // TODO the following code doesn't work. It is trying to just rename the potentially clobbered variable/function names, but it
+  //        // is also renaming other stuff. Solution: use an existing library for renaming.
 //          var publicPropertyNameRe = new RegExp('([\'\"]?)([^\'\"]*)([^\\-\\w\'\"\\.@])(' + publicPropertyName + ')([^\\w:\\-])([^\'\"]*)(\\1)?', 'gm');
 //          var publicPropertyNameInStringRe = new RegExp('(\'|\")([^\'\"]*)(' + publicPropertyName + ')([^\'\"]*)(\\1)', 'gm');
 //          var publicPropertyNameInStringMatches = accumulator.match(publicPropertyNameInStringRe);
@@ -614,7 +615,7 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
     var oneOutputString = outputs.map(function(output) {
       return output.source;
     })
-    .join('\n\n\n\\\\break\n\n\n\n\n');
+    .join('\n\n\n\\\\*********** EOF ***********\n\n\n\n\n');
     fs.writeFileSync('./output.js', oneOutputString, {encoding: 'utf8'});
   }, function(err) {
     throw err;
