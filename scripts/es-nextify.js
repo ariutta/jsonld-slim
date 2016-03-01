@@ -292,8 +292,19 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
             })
         )
         .reduce(function(accumulator, publicPropertyName) {
-          var publicPropertyNameRe = new RegExp('(^|[^\\-\\w\'\"\\.])(' + publicPropertyName + ')(\\W|$)', 'gm');
-          var wee = accumulator.match(publicPropertyNameRe);
+          var publicPropertyNameRe = new RegExp('(^|[^\\-\\w\'\"\\.@])(' + publicPropertyName + ')([^\\w:\\-]|$)', 'gm');
+          var publicPropertyNameInStringRe = new RegExp('(\'|\")(.*)(' + publicPropertyName + ')(.*)(\\1)', 'gm');
+          var publicPropertyNameInStringMatches = accumulator.match(publicPropertyNameInStringRe);
+          if (publicPropertyNameInStringMatches) {
+            var firstMatch = publicPropertyNameInStringMatches[0];
+            try {
+              var isString = _.isString(eval(firstMatch));
+              return accumulator;
+            }
+            catch(e) {
+
+            }
+          }
           return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
         }, node.source);
       })

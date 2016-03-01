@@ -60,6 +60,7 @@ var frame = {
   }
 };
 
+//*
 // frame a document
 // see: http://json-ld.org/spec/latest/json-ld-framing/#introduction
 jsonld.frame(docToFrame, frame, function(err, framed) {
@@ -72,57 +73,58 @@ jsonld.frame(docToFrame, frame, function(err, framed) {
   console.log('framed');
   console.log(JSON.stringify(framed, null, 2));
 });
+//*/
 
-//jsonld.compact(doc, context, function(err, compacted) {
-//  if (err) {
-//    console.log('err');
-//    console.log(err);
-//  }
-//  console.log('compacted');
-//  console.log(JSON.stringify(compacted, null, 2));//  //  {
-//  //    "@context": {...},
-//  //    "name": "Manu Sporny",
-//  //    "homepage": "http://manu.sporny.org/",
-//  //    "image": "http://manu.sporny.org/images/manu.png"
-//  //  }
-//});
-//
-//
-//jsonld.expand(doc, function(err, expanded) {
-//  if (err) {
-//    console.log('err');
-//    console.log(err);
-//  }
-//  console.log('expanded');
-//  console.log(JSON.stringify(expanded, null, 2));
-//  //  {
-//  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
-//  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
-//  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
-//  //  }
-//});
-//
-//jsonld().expand(doc, function(err, expanded) {
-//  if (err) {
-//    console.log('err');
-//    console.log(err);
-//  }
-//  console.log('expanded');
-//  console.log(JSON.stringify(expanded, null, 2));
-//  //  {
-//  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
-//  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
-//  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
-//  //  }
-//});
-//
-//var first = jsonld();
-//first.ActiveContextCache = 1;
-//
-//var second = jsonld();
-//console.log('second.ActiveContextCache');
-//console.log(second.ActiveContextCache);
-//
-//var third = second();
-//console.log('third.ActiveContextCache');
-//console.log(third.ActiveContextCache);
+jsonld.compact(doc, context, function(err, compacted) {
+  if (err) {
+    console.log('err');
+    console.log(err);
+  }
+  console.log('compacted');
+  console.log(JSON.stringify(compacted, null, 2));//  //  {
+  //    "@context": {...},
+  //    "name": "Manu Sporny",
+  //    "homepage": "http://manu.sporny.org/",
+  //    "image": "http://manu.sporny.org/images/manu.png"
+  //  }
+});
+
+
+jsonld.expand(doc, function(err, expanded) {
+  if (err) {
+    console.log('err');
+    console.log(err);
+  }
+  console.log('expanded');
+  console.log(JSON.stringify(expanded, null, 2));
+  //  {
+  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
+  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
+  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
+  //  }
+});
+
+jsonld().expand(doc, function(err, expanded) {
+  if (err) {
+    console.log('err');
+    console.log(err);
+  }
+  console.log('expanded');
+  console.log(JSON.stringify(expanded, null, 2));
+  //  {
+  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
+  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
+  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
+  //  }
+});
+
+var first = jsonld();
+first.ActiveContextCache = 1;
+
+var second = jsonld();
+console.log('second.ActiveContextCache');
+console.log(second.ActiveContextCache);
+
+var third = second();
+console.log('third.ActiveContextCache');
+console.log(third.ActiveContextCache);
