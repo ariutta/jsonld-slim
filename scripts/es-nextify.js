@@ -243,148 +243,66 @@ var cleanSourceString = sourceString
       .replace(/var\ http\ \=\ require\('http'\);/g, '')
       .replace(/(^|[^\\-\\w\'\"\\.])(http.STATUS_CODES)(\\W|$)/g, '$1nodeStatusCodes$3');
 
-rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=documentLoader]', function(getRaw, node, query) {
+var replacements = [{
+  selector: topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=documentLoader]',
+  replacer: function(getRaw, node, query) {
     var newText = fs.readFileSync(__dirname + '/../lib/documentLoader.js', {encoding: 'utf8'});
     return newText;
-  })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' > exp-statement![expression.left.object.name=jsonld][expression.left.property.name=objectify]', function(getRaw, node, query) {
-      return '';
+  }
+}, {
+  selector: topLevelSelector + ' > exp-statement![expression.left.object.name=jsonld][expression.left.property.name=objectify]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: topLevelSelector + ' > exp-statement! > AssignmentExpression #DocumentCache',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: topLevelSelector + ' > exp-statement! > assign > assign.left [name=documentLoaders]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=useDocumentLoader]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=loadDocument]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: topLevelSelector + ' assign.right member > [name=loadDocument]',
+  replacer: function(getRaw, node, query) {
+    return 'documentLoader';
+  }
+}, {
+  selector: 'var-decs! > var-dec > #_browser,IfStatement! > IfStatement.test [name=_browser],IfStatement! > IfStatement.test[name=_browser],IfStatement! > IfStatement.test[left.name=_browser]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}, {
+  selector: 'var-decs! > var-dec > #_nodejs,IfStatement! > IfStatement.test [name=_nodejs],IfStatement! > IfStatement.test[name=_nodejs],IfStatement! > IfStatement.test[left.name=_nodejs]',
+  replacer: function(getRaw, node, query) {
+    return '';
+  }
+}];
+
+var firstReplacement = replacements[0];
+var firstNode = rxGrasp(cleanSourceString).replace(firstReplacement.selector, firstReplacement.replacer);
+Rx.Observable.from(replacements.slice(1))
+  .reduce(function(nodeO, replacement, index, source) {
+    return nodeO.concatMap(function(node) {
+      return node.replace(replacement.selector, replacement.replacer);
     });
+  }, firstNode)
+  .concatMap(function(nodeO) {
+    return nodeO;
   })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' > exp-statement! > AssignmentExpression #DocumentCache', function(getRaw, node, query) {
-      return '';
-    });
-  })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' > exp-statement! > assign > assign.left [name=documentLoaders]', function(getRaw, node, query) {
-      return '';
-    });
-  })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=useDocumentLoader]', function(getRaw, node, query) {
-      return '';
-    });
-  })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=loadDocument]', function(getRaw, node, query) {
-      return '';
-    });
-  })
-  .concatMap(function(node) {
-    return node.replace(topLevelSelector + ' assign.right member > [name=loadDocument]', function(getRaw, node, query) {
-      return 'documentLoader';
-    });
-  })
-//  .concatMap(function(node) {
-//    // make sure we don't clobber anything when we "de-property-ize" the public properties
-//    return node.search(topLevelSelector + ' assign [object.name=' + libraryName + '].property')
-//      .toArray()
-//      .map(function(nodes) {
-//        return _.uniq(
-//            _.filter(nodes, function(node) {
-//              return node.name;
-//            })
-//            .map(function(node) {
-//              return node.name;
-//            })
-//        )
-//        .reduce(function(accumulator, publicPropertyName) {
-  //        // TODO the following code doesn't work. It is trying to just rename the potentially clobbered variable/function names, but it
-  //        // is also renaming other stuff. Solution: use an existing library for renaming.
-//          var publicPropertyNameRe = new RegExp('([\'\"]?)([^\'\"]*)([^\\-\\w\'\"\\.@])(' + publicPropertyName + ')([^\\w:\\-])([^\'\"]*)(\\1)?', 'gm');
-//          var publicPropertyNameInStringRe = new RegExp('(\'|\")([^\'\"]*)(' + publicPropertyName + ')([^\'\"]*)(\\1)', 'gm');
-//          var publicPropertyNameInStringMatches = accumulator.match(publicPropertyNameInStringRe);
-//          /*
-//          if (publicPropertyNameInStringMatches) {
-//            var firstMatch = publicPropertyNameInStringMatches[0];
-//            if (firstMatch[0] === '\'') {
-//              firstMatch = '"' + firstMatch.slice(1, -1) + '"';
-//            }
-//            var dummyJsonString = '{"a":' + firstMatch + '}';
-//            try {
-//              //var isString = _.isString(eval(firstMatch));
-//              var isString = _.isString(JSON.parse(dummyJsonString).a);
-//              return accumulator;
-//            }
-//            catch(e) {
-//              throw e;
-//            }
-//          }
-//          //*/
-//          //return accumulator.replace(publicPropertyNameRe, '$1' + declobberNamespace + publicPropertyName + '$3');
-//          return accumulator.replace(publicPropertyNameRe, function(match, p1, p2, p3, p4, p5, p6, p7, offset, str) {
-//            if (p4 === 'link' || p4 === 'link') {
-//              console.log('**********************************************************************');
-//              console.log('match');
-//              console.log(match);
-//              console.log('publicPropertyNameInStringMatches');
-//              console.log(publicPropertyNameInStringMatches);
-//              console.log('p1');
-//              console.log(p1);
-//              console.log('p2');
-//              console.log(p2);
-//              console.log('p3');
-//              console.log(p3);
-//              console.log('p4');
-//              console.log(p4);
-//              console.log('p5');
-//              console.log(p5);
-//              console.log('p6');
-//              console.log(p6);
-//              console.log('p7');
-//              console.log(p7);
-//              console.log('offset');
-//              console.log(offset);
-//            }
-//            if (p1 === '\'' || p1 === '"') {
-//              console.log('skipmatch');
-//              console.log(match);
-//              return match;
-//            }
-//            var beforeString = [p1, p2, p3].join('');
-//            var afterString = [p4, p5, p6, p7].join('');
-//            var result = beforeString + declobberNamespace + afterString;
-//            if (p4 === 'link' || p4 === 'link') {
-//              console.log('result');
-//              console.log(result);
-//            }
-//            return result;
-//          });
-//        }, node.source);
-//      })
-//      /*
-//      .concatMap(function(nodes) {
-//        var publicPropertyNames = _.uniq(
-//            _.filter(nodes, function(node) {
-//              return node.name;
-//            })
-//            .map(function(node) {
-//              return node.name;
-//            })
-//        );
-//        console.log('publicPropertyNames');
-//        console.log(publicPropertyNames);
-//
-//        var publicPropertyNameFinderString = publicPropertyNames.map(function(publicPropertyName) {
-//          //'var-decs! > var-dec[id=#' + publicPropertyName + '],'
-//          return 'func-exp [id=#' + publicPropertyName + '].id,' +
-//            '[callee] > [name=' + publicPropertyName + '],' +
-//            'assign [object.name=' + publicPropertyName + '].object,' +
-//            'assign > [name=' + publicPropertyName + ']';
-//        })
-//        .join(',');
-//
-//        console.log('publicPropertyNameFinderString');
-//        console.log(publicPropertyNameFinderString);
-//        return node.replace(publicPropertyNameFinderString, function(getRaw, node, query) {
-//          return declobberNamespace + node.name;
-//        });
-//      });
-//      //*/
-//  })
-//  //*/
+  /*
   .concatMap(function(node) {
     var nodeSource = node.source;
     return rxGrasp(nodeSource).search('IfStatement! > IfStatement.test[name=_nodejs]')
@@ -403,16 +321,7 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
         return nodeSource;
       });
   })
-  .concatMap(function(nodeSource) {
-    return rxGrasp(nodeSource).replace('var-decs! > var-dec > #_browser,IfStatement! > IfStatement.test [name=_browser],IfStatement! > IfStatement.test[name=_browser],IfStatement! > IfStatement.test[left.name=_browser]', function(getRaw, node, query) {
-        return '';
-      });
-  })
-  .concatMap(function(node) {
-    return rxGrasp(node.source).replace('var-decs! > var-dec > #_nodejs,IfStatement! > IfStatement.test [name=_nodejs],IfStatement! > IfStatement.test[name=_nodejs],IfStatement! > IfStatement.test[left.name=_nodejs]', function(getRaw, node, query) {
-        return '';
-      });
-  })
+  //*/
   .map(function(node) {
     var reInput = '(\\W|^)(_nodejs)(\\W|$)';
     var re = new RegExp(reInput, 'gm');
@@ -493,7 +402,6 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
               return !!moduleItem.second;
             });
 
-        //return Rx.Observable.return([{source: ''}]);
         return Rx.Observable.from(moduleElements)
           .map(function(moduleItem) {
             var first = moduleItem.first;
@@ -530,8 +438,6 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
                 var reInput = '(\\W|^)(' + iteratorModuleName + ')(\\W|$)';
                 var re = new RegExp(reInput, 'gm');
                 if (re.test(source)) {
-                  //return 'import ' + iteratorModuleName + ' from \'./' + iteratorModuleName + '\';\n' + accumulator;
-                  //return 'import ' + iteratorModuleName + ' as ' + iteratorModuleName + ' from \'./' + iteratorModuleName + '\';\n' + accumulator;
                   return 'import {' + iteratorModuleName + '} from \'./' + iteratorModuleName + '\';\n' + accumulator;
                 } else {
                   return accumulator
@@ -545,48 +451,6 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
               source: source
             };
           })
-          /*
-          .concatMap(function(moduleItem) {
-            var graspSelectors = _.uniq(
-              _.toPairs(elementsGroupedByFirstName)
-                .reduce(function(accumulator, pair) {
-                  var first = pair[0];
-                  var seconds = pair[1].map(function(item) {
-                    return item.second;
-                  });
-                  return accumulator.concat(seconds.map(function(second) {
-                    if (!second) {
-                      return '#' + first
-                    } else {
-                      return '[object.name=' + first + '] [property.name=' + second + ']'
-                    }
-                  }));
-                }, [])
-            );
-            console.log('graspSelectors');
-            console.log(graspSelectors);
-            var selectorFinderString = graspSelectors.join(',');
-            var first = moduleItem.first;
-            var second = moduleItem.second;
-            var moduleName = moduleItem.moduleName;
-            var source = moduleItem.source;
-            return rxGrasp(source).replace(selectorFinderString, function(getRaw, node, query) {
-                var firstAndSecondNames = getFirstAndSecondNames(node);
-                var first = firstAndSecondNames.first;
-                var second = firstAndSecondNames.second;
-                return 'import ' + second + ' from \'./' + first + '\';\n' + node.source;
-              })
-              .map(function(node) {
-                return node.source;
-              });
-          })
-          //*/
-          /*
-          .map(function(moduleItem) {
-            moduleItem.source = moduleItem.source.replace(/\ (.*)\ ?=\ ?require\((.*)\)/g, 'import $1 from $2');
-            return moduleItem;
-          });
-          //*/
       });
   })
   .doOnNext(function(output) {
@@ -602,8 +466,6 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
         return output.first === libraryName;
       })
       .map(function(output) {
-        //return 'import ' + output.moduleName + ' from \'./' + output.moduleName + '\';\n' +
-        //return 'import ' + output.moduleName + ' as ' + output.moduleName + ' from \'./' + output.moduleName + '\';\n' +
         return 'import {' + output.moduleName + '} from \'./' + output.moduleName + '\';\n' +
           'export const ' + output.second + ' = ' + output.moduleName + ';';
       })
@@ -622,79 +484,3 @@ rxGrasp(cleanSourceString).replace(topLevelSelector + ' > exp-statement! > assig
   }, function() {
     console.log('Build completed');
   });
-
-// grasp 'exp-statement![expression.left.object.name=jsonld]' --replace '{{ assign[left.object.name=jsonld].right | join | prepend "export default " }}' ./node_modules/jsonld/js/jsonld.js --to testit.js
-// grasp 'exp-statement![expression.left.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'assign![left.object.name=jsonld][left.object.object.name=jsonld][left.object.object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'assign![left.object.object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'assign![left.object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'assign![left.object.name=jsonld]assign![left.object.object.name=jsonld],assign![left.object.object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'assign![left.object.name=jsonld],assign![left.object.object.name=jsonld],assign![left.object.object.object.name=jsonld]' --replace '{{ assign[left.object.name=jsonld].right,assign[left.object.object.name=jsonld].right,assign[left.object.object.object.name=jsonld].right | join | prepend "export default " }}' ./node_modules/jsonld/js/jsonld.js --to testit.js
-// grasp '(assign[left.object.name=jsonld],assign[left.object.object.name=jsonld],assign[left.object.object.object.name=jsonld]).left' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'exp-statement.expression.left[object.name=jsonld],exp-statement.expression.left[object.object.name=jsonld],exp-statement.expression.left[left.object.object.object.name=jsonld])' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement.expression.left[object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement.expression.left[object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement.expression.left[object.object.object.name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'exp-statement.expression.left([object.name=jsonld],[object.object.name=jsonld],[object.object.object.name=jsonld])' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement.expression.left [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'assign.left! [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-decs[name=jsonldActiveContextCache]' ./dist/jsonldActiveContextCache.js
-// grasp 'var-decs! > * > #jsonldActiveContextCache,exp-statement! > assign [left.name=jsonldActiveContextCache]' ./dist/jsonldActiveContextCache.js
-//
-// grasp 'var-decs! > * > #jsonldActiveContextCache,exp-statement! > assign > * > * > #jsonldActiveContextCache' ./dist/jsonldActiveContextCache.js
-// grasp '* > [left.name=jsonldActiveContextCache]' ./dist/jsonldActiveContextCache.js
-//
-// grasp 'exp-statement! > * > assign.left [object.name=jsonldActiveContextCache]' ./dist/jsonldActiveContextCache.js
-// grasp 'var-decs! > * > #jsonldActiveContextCache,exp-statement! > * > assign.left [object.name=jsonldActiveContextCache]' ./dist/jsonldActiveContextCache.js
-// grasp 'assign.left! ([name=jsonld],[name=Processor])' ./dist/tester.js
-// grasp ':root > var-decs' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > var-decs' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body) > var-decs' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement[id!=#wrapper]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-decs > var-dec! > :not(#wrapper)' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id!=#wrapper]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > var-decs > exp-statement > assign' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > (exp-statement > assign[left.object.name], exp-statement > func-dec)' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > (exp-statement > assign[left.object.name] > assign.left, func-dec)' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement > assign[left.object.name] > assign.left,var-dec[id=#wrapper][init=func-exp].init.body > func-dec' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > func-dec' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement > assign[left.object.name] > assign.left,var-dec[id=#wrapper][init=func-exp].init.body > func-dec,var-dec[id=#wrapper][init=func-exp].init.body > var-decs > var-dec' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body assign.left! [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body assign.left! [name=jsonldDocumentLoader]' ./jsonldDocumentLoaderTest.js
-// grasp '#compact' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoader]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body #documentLoaders' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign > assign.left [name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld] > assign ([left.object.name=documentLoaders],[left.property.name=documentLoaders])' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! [left.object.name=documentLoaders]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement! > assign[left.object.name=jsonld][left.property.name=loadDocument]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=jsonld]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=jsonld] > assign[left.object.name=jsonld][left.property.name=loadDocument]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=IdentifierIssuer]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > member! > [name=IdentifierIssuer]' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > [object.name=Processor] [property.name=expand]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement #Processor' ./node_modules/jsonld/js/jsonld.js
-// grasp '#_removeEmbed' ./node_modules/jsonld/js/jsonld.js
-//
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > var-decs! > var-dec' ./node_modules/jsonld/js/jsonld.js
-// grasp '#nodejs' ./node_modules/jsonld/js/jsonld.js
-// grasp 'var-dec[id=#wrapper][init=func-exp].init.body > exp-statement![expression.left.object.name=jsonld][expression.left.property.name=objectify]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'exp-statement![expression.left.object.name=jsonld][expression.left.property.name=objectify]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'IfStatement! > IfStatement.test [name=_nodejs],IfStatement! > IfStatement.test[name=_nodejs],IfStatement! > IfStatement.test[left.name=_nodejs]' ./node_modules/jsonld/js/jsonld.js
-// grasp 'IfStatement! > IfStatement.test[left.name=_nodejs]' ./node_modules/jsonld/js/jsonld.js
-//
-// rollup -c -o ./bundle.js
