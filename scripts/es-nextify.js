@@ -225,7 +225,8 @@ var topLevelSelector = 'var-dec[id=#wrapper][init=func-exp].init.body';
 
 var cleanSourceString = sourceString
       .replace(/var\ http\ \=\ require\('http'\);/g, '')
-      .replace(/(^|[^\\-\\w\'\"\\.])(http.STATUS_CODES)(\\W|$)/g, '$1nodeStatusCodes$3');
+      .replace(/(^|[^\\-\\w\'\"\\.])(http.STATUS_CODES)(\\W|$)/g, '$1nodeStatusCodes$3')
+      .replace(/jsonld.nextTick/g, 'jsonld.setImmediate');
 
 var replacements = [{
   selector: topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=documentLoader]',
@@ -361,6 +362,9 @@ Rx.Observable.from(replacements.slice(1))
             });
             return result;
           });
+
+        console.log('firstAndSecondNames');
+        console.log(firstAndSecondNames);
 
         var moduleElements = _.toPairs(elementsGroupedByFirstName)
           .reduce(function(accumulator, pair) {
