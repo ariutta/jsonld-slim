@@ -8,7 +8,7 @@
 
 
 var _ = require('lodash');
-var fs = require('fs');
+var fs = require('fs-extra');
 var grasp = require('grasp');
 var path = require('path');
 var Rx = require('rx');
@@ -19,6 +19,7 @@ const declobberNamespace = '_esn';
 const DOT = 'DOT';
 const mainModuleName = declobberNamespace + 'main';
 
+fs.removeSync(path.join(__dirname, '..', 'dist', 'esnext'));
 var beforeString = fs.readFileSync(path.join(__dirname, '..', 'lib', 'before.js'));
 var afterString = fs.readFileSync(path.join(__dirname, '..', 'lib', 'after.js'));
 
@@ -223,6 +224,7 @@ function getFirstAndSecondNames(node) {
 
 var topLevelSelector = 'var-dec[id=#wrapper][init=func-exp].init.body';
 
+//var cleanSourceString = 'import documentLoaderCreator from \'../lib/documentLoaderCreator.js\';\n' + sourceString
 var cleanSourceString = sourceString
       .replace(/var\ http\ \=\ require\('http'\);/g, '')
       .replace(/(^|[^\\-\\w\'\"\\.])(http.STATUS_CODES)(\\W|$)/g, '$1nodeStatusCodes$3')
@@ -231,7 +233,8 @@ var cleanSourceString = sourceString
 var replacements = [{
   selector: topLevelSelector + ' > exp-statement! > assign[left.object.name=' + libraryName + '][left.property.name=documentLoader]',
   replacer: function(getRaw, node, query) {
-    var newText = fs.readFileSync(__dirname + '/../lib/documentLoader.js', {encoding: 'utf8'});
+    //var newText = 'documentLoaderCreator()';
+    var newText = '';
     return newText;
   }
 }, {
@@ -297,10 +300,10 @@ Rx.Observable.from(replacements.slice(1))
           return node.source;
         })
         .join('\n');
-        var destPath = path.join(__dirname, '..', 'dist', libraryName, 'node-polyfills.js');
+        var destPath = path.join(__dirname, '..', 'dist', 'esnext', libraryName, 'node-polyfills.js');
         console.log('nodePolyfillString');
         console.log(nodePolyfillString);
-        fs.writeFileSync(destPath, nodePolyfillString, {encoding: 'utf8'});
+        fs.outputFileSync(destPath, nodePolyfillString, {encoding: 'utf8'});
       })
       .map(function(nodes) {
         return nodeSource;
@@ -320,7 +323,7 @@ Rx.Observable.from(replacements.slice(1))
   })
   //*/
   .concatMap(function(nodeSource) {
-    fs.writeFileSync('./output.js', nodeSource, {encoding: 'utf8'});
+    fs.outputFileSync('./output.js', nodeSource, {encoding: 'utf8'});
 
     var moduleCandidatesSearchStrings = [
       topLevelSelector + ' > exp-statement',
@@ -444,8 +447,8 @@ Rx.Observable.from(replacements.slice(1))
   .doOnNext(function(output) {
     var moduleName = output.moduleName;
     var source = output.source;
-    var destPath = path.join(__dirname, '..', 'dist', libraryName, moduleName + '.js');
-    fs.writeFileSync(destPath, source, {encoding: 'utf8'});
+    var destPath = path.join(__dirname, '..', 'dist', 'esnext', libraryName, moduleName + '.js');
+    fs.outputFileSync(destPath, source, {encoding: 'utf8'});
   })
   .toArray()
   .subscribe(function(outputs) {
@@ -459,14 +462,14 @@ Rx.Observable.from(replacements.slice(1))
       })
       .join('\n');
 
-    var destPath = path.join(__dirname, '..', 'dist', libraryName, libraryName + '.js');
-    fs.writeFileSync(destPath, libraryFile, {encoding: 'utf8'});
+    var destPath = path.join(__dirname, '..', 'dist', 'esnext', libraryName, libraryName + '.js');
+    fs.outputFileSync(destPath, libraryFile, {encoding: 'utf8'});
 
     var oneOutputString = outputs.map(function(output) {
       return output.source;
     })
     .join('\n\n\n\\\\*********** EOF ***********\n\n\n\n\n');
-    fs.writeFileSync('./output.js', oneOutputString, {encoding: 'utf8'});
+    fs.outputFileSync('./output.js', oneOutputString, {encoding: 'utf8'});
   }, function(err) {
     throw err;
   }, function() {

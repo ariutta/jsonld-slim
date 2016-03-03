@@ -2,13 +2,13 @@
   "name": "jsonld-next",
   "version": "1.0.0-alpha.1",
   "description": "JSON-LD in ES.next",
-  "main": "index.js",
+  "main": "dist/jsonld/index.js",
   "jsnext:main": "dist/jsonld/main.ecma.js",
   "scripts": {
     "build": "node ./scripts/build.js",
     "postinstall": "node ./scripts/mkdir_dist && node ./scripts/cp_-r_node_modules_jsonld_tests && npm run build",
     "test-windows": "node ./scripts/test",
-    "test": "export JSDIR='../dist' && mocha ./dist/tests/test.js"
+    "test": "export JSDIR='../dist/node' && mocha ./dist/tests/test.js"
   },
   "author": "",
   "license": "BSD-3-Clause",
@@ -31,9 +31,12 @@
   "devDependencies": {
     "assert": "^1.3.0",
     "commander": "^2.9.0",
-    "mocha": "^2.4.5"
+    "mocha": "^2.4.5",
+    "rollup-plugin-commonjs": "^2.2.1",
+    "rollup-plugin-node-resolve": "^1.4.0"
   },
   "browser": {
+    "dist/jsonld/index.js": "dist/jsonld/index.browser.js",
     "crypto": false,
     "es6-promise": false,
     "superagent-cache": false,
