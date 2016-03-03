@@ -1,5 +1,5 @@
-import {_isString} from './_isString';
 import {_removeDotSegments} from './_removeDotSegments';
+import {_isString} from './_isString';
 import {jsonldDOTurl} from './jsonldDOTurl';
 export const _prependBase = function(base, iri) {
   // skip IRI processing

@@ -353,7 +353,16 @@
     return dataset;
   }
 
-  const jsonldDOTnextTick = require('next-tick');
+  const _setImmediate = typeof setImmediate === 'function' && setImmediate;
+
+  const _delay = _setImmediate ? function(fn) {
+    // not a direct alias (for IE10 compatibility)
+    _setImmediate(fn);
+  } : function(fn) {
+    setTimeout(fn, 0);
+  };
+
+  const jsonldDOTsetImmediate = _setImmediate ? _delay : jsonldDOTsetImmediate;
 
   const URDNA2015 = (function() {
 
@@ -402,7 +411,7 @@
         // stack too deep, run on next tick
         schedule.depth = 0;
         schedule.running = false;
-        return jsonldDOTnextTick(work);
+        return jsonldDOTsetImmediate(work);
       }
 
       // if not yet running, force run
@@ -428,7 +437,7 @@
       // do some other things
       schedule.depth = 0;
       schedule.running = false;
-      jsonldDOTnextTick(work);
+      jsonldDOTsetImmediate(work);
     })();
   };
 
@@ -1787,9 +1796,64 @@
     return (a < b) ? -1 : 1;
   }
 
+  const _removeDotSegments = function(path, hasAuthority) {
+    var rval = '';
+
+    if(path.indexOf('/') === 0) {
+      rval = '/';
+    }
+
+    // RFC 3986 5.2.4 (reworked)
+    var input = path.split('/');
+    var output = [];
+    while(input.length > 0) {
+      if(input[0] === '.' || (input[0] === '' && input.length > 1)) {
+        input.shift();
+        continue;
+      }
+      if(input[0] === '..') {
+        input.shift();
+        if(hasAuthority ||
+          (output.length > 0 && output[output.length - 1] !== '..')) {
+          output.pop();
+        } else {
+          // leading relative URL '..'
+          output.push('..');
+        }
+        continue;
+      }
+      output.push(input.shift());
+    }
+
+    return rval + output.join('/');
+  }
+
   const jsonldDOTurl = {};
 
-  jsonldDOTurl.parse = require('jsonld-url-parse');
+  jsonldDOTurl.parsers = {
+    simple: {
+      // RFC 3986 basic parts
+      keys: ['href','scheme','authority','path','query','fragment'],
+      regex: /^(?:([^:\/?#]+):)?(?:\/\/([^\/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/
+    },
+    full: {
+      keys: ['href','protocol','scheme','authority','auth','user','password','hostname','port','path','directory','file','query','fragment'],
+      regex: /^(([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?(?:(((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/
+    }
+  };
+
+
+  jsonldDOTurl.parse = function(str, parser) {
+    var parsed = {};
+    var o = jsonldDOTurl.parsers[parser || 'full'];
+    var m = o.regex.exec(str);
+    var i = o.keys.length;
+    while(i--) {
+      parsed[o.keys[i]] = (m[i] === undefined) ? null : m[i];
+    }
+    parsed.normalizedPath = _removeDotSegments(parsed.path, !!parsed.authority);
+    return parsed;
+  };
 
   const _getInitialContext = function(options) {
     var base = jsonldDOTurl.parse(options.base || '');
@@ -2528,38 +2592,6 @@
         'Invalid JSON-LD syntax; @context and @preserve cannot be aliased.',
         'jsonld.SyntaxError', {code: 'invalid keyword alias', context: localCtx});
     }
-  }
-
-  const _removeDotSegments = function(path, hasAuthority) {
-    var rval = '';
-
-    if(path.indexOf('/') === 0) {
-      rval = '/';
-    }
-
-    // RFC 3986 5.2.4 (reworked)
-    var input = path.split('/');
-    var output = [];
-    while(input.length > 0) {
-      if(input[0] === '.' || (input[0] === '' && input.length > 1)) {
-        input.shift();
-        continue;
-      }
-      if(input[0] === '..') {
-        input.shift();
-        if(hasAuthority ||
-          (output.length > 0 && output[output.length - 1] !== '..')) {
-          output.pop();
-        } else {
-          // leading relative URL '..'
-          output.push('..');
-        }
-        continue;
-      }
-      output.push(input.shift());
-    }
-
-    return rval + output.join('/');
   }
 
   const _prependBase = function(base, iri) {
@@ -5226,7 +5258,7 @@
 
   const jsonldDOTexpand = function(input, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not expand, too few arguments.'));
       });
     }
@@ -5246,7 +5278,7 @@
       options.keepFreeFloatingNodes = false;
     }
 
-    jsonldDOTnextTick(function() {
+    jsonldDOTsetImmediate(function() {
       // if input is a string, attempt to dereference remote document
       if(typeof input === 'string') {
         var done = function(err, remoteDoc) {
@@ -5351,7 +5383,7 @@
 
   const jsonldDOTcompact = function(input, ctx, options, callback) {
     if(arguments.length < 2) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not compact, too few arguments.'));
       });
     }
@@ -5364,7 +5396,7 @@
     options = options || {};
 
     if(ctx === null) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new JsonLdError(
           'The compaction context must not be null.',
           'jsonld.CompactError', {code: 'invalid local context'}));
@@ -5373,7 +5405,7 @@
 
     // nothing to compact
     if(input === null) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(null, null);
       });
     }
@@ -5404,7 +5436,7 @@
     }
 
     var expand = function(input, options, callback) {
-      jsonldDOTnextTick(function() {
+      jsonldDOTsetImmediate(function() {
         if(options.skipExpansion) {
           return callback(null, input);
         }
@@ -5510,7 +5542,7 @@
 
   const jsonldDOTflatten = function(input, ctx, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not flatten, too few arguments.'));
       });
     }
@@ -5635,7 +5667,7 @@
 
   const jsonldDOTframe = function(input, frame, options, callback) {
     if(arguments.length < 2) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not frame, too few arguments.'));
       });
     }
@@ -5663,7 +5695,7 @@
     }
     options.omitDefault = options.omitDefault || false;
 
-    jsonldDOTnextTick(function() {
+    jsonldDOTsetImmediate(function() {
       // if frame is a string, attempt to dereference remote document
       if(typeof frame === 'string') {
         var done = function(err, remoteDoc) {
@@ -5800,7 +5832,7 @@
 
   const jsonldDOTtoRDF = function(input, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not convert to RDF, too few arguments.'));
       });
     }
@@ -5849,7 +5881,7 @@
 
   const jsonldDOTnormalize = function(input, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not normalize, too few arguments.'));
       });
     }
@@ -5902,7 +5934,7 @@
 
   const jsonldDOTfromRDF = function(dataset, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not convert from RDF, too few arguments.'));
       });
     }
@@ -5929,7 +5961,7 @@
       }
     }
 
-    jsonldDOTnextTick(function() {
+    jsonldDOTsetImmediate(function() {
       // handle special format
       var rdfParser;
       if(options.format) {
@@ -5984,7 +6016,7 @@
 
   const jsonldDOTcreateNodeMap = function(input, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not create node map, too few arguments.'));
       });
     }
@@ -6057,12 +6089,12 @@
 
   const jsonldDOTmerge = function(docs, ctx, options, callback) {
     if(arguments.length < 1) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not merge, too few arguments.'));
       });
     }
     if(!_isArray(docs)) {
-      return jsonldDOTnextTick(function() {
+      return jsonldDOTsetImmediate(function() {
         callback(new TypeError('Could not merge, "docs" must be an array.'));
       });
     }
@@ -6511,7 +6543,7 @@
   const promises = jsonldDOTpromises;
   const promisify = jsonldDOTpromisify;
   const JsonLdProcessor = jsonldDOTJsonLdProcessor;
-  const nextTick = jsonldDOTnextTick;
+  const setImmediate$1 = jsonldDOTsetImmediate;
   const parseLinkHeader = jsonldDOTparseLinkHeader;
   const RequestQueue = jsonldDOTRequestQueue;
   const ActiveContextCache = jsonldDOTActiveContextCache;
@@ -6548,7 +6580,7 @@ var jsonldModule = Object.freeze({
   	promises: promises,
   	promisify: promisify,
   	JsonLdProcessor: JsonLdProcessor,
-  	nextTick: nextTick,
+  	setImmediate: setImmediate$1,
   	parseLinkHeader: parseLinkHeader,
   	RequestQueue: RequestQueue,
   	ActiveContextCache: ActiveContextCache,

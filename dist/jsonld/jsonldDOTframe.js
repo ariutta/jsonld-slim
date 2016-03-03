@@ -4,13 +4,13 @@ import {_compactIri} from './_compactIri';
 import {_removePreserve} from './_removePreserve';
 import {Processor} from './Processor';
 import {JsonLdError} from './JsonLdError';
-import {jsonldDOTnextTick} from './jsonldDOTnextTick';
+import {jsonldDOTsetImmediate} from './jsonldDOTsetImmediate';
 import {jsonldDOTdocumentLoader} from './jsonldDOTdocumentLoader';
 import {jsonldDOTexpand} from './jsonldDOTexpand';
 import {jsonldDOTcompact} from './jsonldDOTcompact';
 export const jsonldDOTframe = function(input, frame, options, callback) {
   if(arguments.length < 2) {
-    return jsonldDOTnextTick(function() {
+    return jsonldDOTsetImmediate(function() {
       callback(new TypeError('Could not frame, too few arguments.'));
     });
   }
@@ -38,7 +38,7 @@ export const jsonldDOTframe = function(input, frame, options, callback) {
   }
   options.omitDefault = options.omitDefault || false;
 
-  jsonldDOTnextTick(function() {
+  jsonldDOTsetImmediate(function() {
     // if frame is a string, attempt to dereference remote document
     if(typeof frame === 'string') {
       var done = function(err, remoteDoc) {

@@ -4,12 +4,12 @@ import {URGNA2012} from './URGNA2012';
 import {Processor} from './Processor';
 import {JsonLdError} from './JsonLdError';
 import {RDF} from './RDF';
-import {jsonldDOTnextTick} from './jsonldDOTnextTick';
+import {jsonldDOTsetImmediate} from './jsonldDOTsetImmediate';
 import {jsonldDOTdocumentLoader} from './jsonldDOTdocumentLoader';
 import {jsonldDOTtoRDF} from './jsonldDOTtoRDF';
 export const jsonldDOTnormalize = function(input, options, callback) {
   if(arguments.length < 1) {
-    return jsonldDOTnextTick(function() {
+    return jsonldDOTsetImmediate(function() {
       callback(new TypeError('Could not normalize, too few arguments.'));
     });
   }

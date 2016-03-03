@@ -5,11 +5,11 @@ import {_isObject} from './_isObject';
 import {_getInitialContext} from './_getInitialContext';
 import {Processor} from './Processor';
 import {JsonLdError} from './JsonLdError';
-import {jsonldDOTnextTick} from './jsonldDOTnextTick';
+import {jsonldDOTsetImmediate} from './jsonldDOTsetImmediate';
 import {jsonldDOTdocumentLoader} from './jsonldDOTdocumentLoader';
 export const jsonldDOTexpand = function(input, options, callback) {
   if(arguments.length < 1) {
-    return jsonldDOTnextTick(function() {
+    return jsonldDOTsetImmediate(function() {
       callback(new TypeError('Could not expand, too few arguments.'));
     });
   }
@@ -29,7 +29,7 @@ export const jsonldDOTexpand = function(input, options, callback) {
     options.keepFreeFloatingNodes = false;
   }
 
-  jsonldDOTnextTick(function() {
+  jsonldDOTsetImmediate(function() {
     // if input is a string, attempt to dereference remote document
     if(typeof input === 'string') {
       var done = function(err, remoteDoc) {
