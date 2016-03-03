@@ -7,15 +7,6 @@
  */
 
 
-// find all publicly available methods, e.g., jsonld.compact
-// rename "jsonld.compact =" in source to "var jsonldCompact ="
-// rename jsonld.compact everywhere else in source to jsonldCompact
-// split out jsonldCompact into its own file and append "export default jsonldCompact"
-// any modules that depend on jsonldCompact need to import it
-//
-// do the same for Processor.prototype, e.g., "Processor.prototype.compact" and "Processor().compact"
-// do similar for top-level methods, e.g., "_getInitialContext"
-
 var _ = require('lodash');
 var fs = require('fs');
 var grasp = require('grasp');
@@ -184,13 +175,6 @@ function getNamedElementParent(input, previousInput) {
     }
   }
 
-  /*
-  if (matchingPropertyValue && matchingPropertyValue.name && matchingPropertyValue.name === 'Processor') {
-    console.log('input');
-    console.log(input);
-  }
-  //*/
-
   // TODO still not handling prototypes quite right, e.g., Processor.prototype.alskdn
   if ((matchingKey === 'name') || (matchingKey === 'id' && !matchingPropertyValue)) {
     return previousInput;
@@ -322,6 +306,7 @@ Rx.Observable.from(replacements.slice(1))
       });
   })
   //*/
+  //*
   .map(function(node) {
     var reInput = '(\\W|^)(_nodejs)(\\W|$)';
     var re = new RegExp(reInput, 'gm');
@@ -332,6 +317,7 @@ Rx.Observable.from(replacements.slice(1))
     var re = new RegExp(reInput, 'gm');
     return nodeSource.replace(re, '$1$3');
   })
+  //*/
   .concatMap(function(nodeSource) {
     fs.writeFileSync('./output.js', nodeSource, {encoding: 'utf8'});
 
@@ -375,8 +361,6 @@ Rx.Observable.from(replacements.slice(1))
             });
             return result;
           });
-        console.log('firstAndSecondNames');
-        console.log(firstAndSecondNames);
 
         var moduleElements = _.toPairs(elementsGroupedByFirstName)
           .reduce(function(accumulator, pair) {
