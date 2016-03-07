@@ -135,20 +135,11 @@ var replacements = [{
   replacer: function(getRaw, node, query) {
     return '';
   }
-/*
-}, {
-  selector: topLevelSelector + ' assign.right member! > [name=loadDocument]',
-  replacer: function(getRaw, node, query) {
-    return 'jsonldDOTdocumentLoader';
-  }
-//*/
-//*
 }, {
   selector: topLevelSelector + ' assign.right member > [name=loadDocument]',
   replacer: function(getRaw, node, query) {
     return 'documentLoader';
   }
-//*/
 }, {
   selector: 'var-decs! > var-dec > #_browser,' +
     'IfStatement! > IfStatement.test [name=_browser],' +
@@ -157,22 +148,6 @@ var replacements = [{
   replacer: function(getRaw, node, query) {
     return '';
   }
-/*
-}, {
-  selector: topLevelSelector + ' > exp-statement! > ' +
-    'assign[left.object.name=NormalizeHash][left.property.name=_init] #sha256,' +
-    'MessageDigest',
-  replacer: function(getRaw, node, query) {
-    // TODO the line below works in the terminal, but this query does not.
-    // grasp 'var-dec[id=#wrapper][init=func-exp].init.body exp-statement! > ' +
-    //  'assign[left.object.name=NormalizeHash][left.property.name=_init]' ' +
-    //  './node_modules/jsonld/js/jsonld.js
-    console.log('node hasher');
-    console.log(getRaw(node));
-    fs.outputFileSync('./output.js', getRaw(node), {encoding: 'utf8'});
-    return '';
-  }
-//*/
 //*
 }, {
   //selector: topLevelSelector + ' IfStatement! #crypto',
@@ -305,11 +280,6 @@ return Rx.Observable.from(replacements.slice(1))
         var elementsGroupedByFirstName = _.reduce(nodes, function(accumulator, node) {
           var firstAndSecondNames = rxGrasp.getFirstAndSecondNames(node, mainModuleName);
           var first = firstAndSecondNames.first;
-          /*
-          if (first === 'jsonldDOTdocumentLoader') {
-            return accumulator;
-          }
-          //*/
           var second = firstAndSecondNames.second;
           accumulator[first] = accumulator[first] || [];
           var element = _.find(accumulator[first], function(elementFromFirstNameGroup) {
@@ -405,17 +375,6 @@ return Rx.Observable.from(replacements.slice(1))
                 source;
             }
 
-            /*
-            var reDocumentLoader = new RegExp('\\bjsonldDOTdocumentLoader\\b');
-            if (reDocumentLoader.test(source)) {
-              var reImportDocumentLoader = new RegExp('\\.\\/jsonldDOTdocumentLoader');
-              if (!reImportDocumentLoader.test(source)) {
-                source = 'import {jsonldDOTdocumentLoader} from \'./jsonldDOTdocumentLoader\';\n' +
-                  source;
-              }
-            }
-            //*/
-
             source = _.filter(moduleElements, function(iteratorModuleItem) {
                 return iteratorModuleItem.moduleName !== moduleName;
               })
@@ -443,6 +402,7 @@ return Rx.Observable.from(replacements.slice(1))
       });
   })
   .doOnNext(function(output) {
+    // NOTE: we already have defined our own new jsonldDOTdocumentLoader, so we discard the old one.
     if (output.moduleName !== 'jsonldDOTdocumentLoader') {
       var moduleName = output.moduleName;
       var source = output.source;
