@@ -1,8 +1,12 @@
-var jsonld = require('./index.js');
-//var jsonld = require('./dist/jsonld');
+//var jsonld = require('./index.js');
+var jsonld = require('./dist/node/jsonld');
 
+console.log('jsonld');
+console.log(jsonld);
 console.log('jsonld.parseLinkHeader');
 console.log(jsonld.parseLinkHeader);
+console.log('jsonld.documentLoader');
+console.log(jsonld.documentLoader);
 
 var doc = {
   "http://schema.org/name": "Manu Sporny",
@@ -60,22 +64,15 @@ var frame = {
   }
 };
 
-//*
-// frame a document
-// see: http://json-ld.org/spec/latest/json-ld-framing/#introduction
-jsonld.frame(docToFrame, frame, function(err, framed) {
-  // document transformed into a particular tree structure per the given frame
-  if (err) {
-    console.log('err');
-    console.log(err);
-    throw err;
-  }
-  console.log('framed');
-  console.log(JSON.stringify(framed, null, 2));
-});
-//*/
+var docWithRemoteContext = {
+  '@context': 'http://json-ld.org/contexts/person.jsonld',
+  '@id': 'http://dbpedia.org/resource/John_Lennon',
+  'name': 'John Lennon',
+  'born': '1940-10-09',
+  'spouse': 'http://dbpedia.org/resource/Cynthia_Lennon'
+};
 
-jsonld.compact(doc, context, function(err, compacted) {
+jsonld.compact(docWithRemoteContext, docWithRemoteContext['@context'], function(err, compacted) {
   if (err) {
     console.log('err');
     console.log(err);
@@ -89,8 +86,7 @@ jsonld.compact(doc, context, function(err, compacted) {
   //  }
 });
 
-
-jsonld.expand(doc, function(err, expanded) {
+jsonld.expand(docWithRemoteContext, function(err, expanded) {
   if (err) {
     console.log('err');
     console.log(err);
@@ -104,27 +100,71 @@ jsonld.expand(doc, function(err, expanded) {
   //  }
 });
 
-jsonld().expand(doc, function(err, expanded) {
-  if (err) {
-    console.log('err');
-    console.log(err);
-  }
-  console.log('expanded');
-  console.log(JSON.stringify(expanded, null, 2));
-  //  {
-  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
-  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
-  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
-  //  }
-});
 
-var first = jsonld();
-first.ActiveContextCache = 1;
-
-var second = jsonld();
-console.log('second.ActiveContextCache');
-console.log(second.ActiveContextCache);
-
-var third = second();
-console.log('third.ActiveContextCache');
-console.log(third.ActiveContextCache);
+////*
+//// frame a document
+//// see: http://json-ld.org/spec/latest/json-ld-framing/#introduction
+//jsonld.frame(docToFrame, frame, function(err, framed) {
+//  // document transformed into a particular tree structure per the given frame
+//  if (err) {
+//    console.log('err');
+//    console.log(err);
+//    throw err;
+//  }
+//  console.log('framed');
+//  console.log(JSON.stringify(framed, null, 2));
+//});
+////*/
+//
+//jsonld.compact(doc, context, function(err, compacted) {
+//  if (err) {
+//    console.log('err');
+//    console.log(err);
+//  }
+//  console.log('compacted');
+//  console.log(JSON.stringify(compacted, null, 2));//  //  {
+//  //    "@context": {...},
+//  //    "name": "Manu Sporny",
+//  //    "homepage": "http://manu.sporny.org/",
+//  //    "image": "http://manu.sporny.org/images/manu.png"
+//  //  }
+//});
+//
+//jsonld.expand(doc, function(err, expanded) {
+//  if (err) {
+//    console.log('err');
+//    console.log(err);
+//  }
+//  console.log('expanded');
+//  console.log(JSON.stringify(expanded, null, 2));
+//  //  {
+//  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
+//  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
+//  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
+//  //  }
+//});
+//
+//jsonld().expand(doc, function(err, expanded) {
+//  if (err) {
+//    console.log('err');
+//    console.log(err);
+//  }
+//  console.log('expanded');
+//  console.log(JSON.stringify(expanded, null, 2));
+//  //  {
+//  //    "http://schema.org/name": [{"@value": "Manu Sporny"}],
+//  //    "http://schema.org/url": [{"@id": "http://manu.sporny.org/"}],
+//  //    "http://schema.org/image": [{"@id": "http://manu.sporny.org/images/manu.png"}]
+//  //  }
+//});
+//
+//var first = jsonld();
+//first.ActiveContextCache = 1;
+//
+//var second = jsonld();
+//console.log('second.ActiveContextCache');
+//console.log(second.ActiveContextCache);
+//
+//var third = second();
+//console.log('third.ActiveContextCache');
+//console.log(third.ActiveContextCache);

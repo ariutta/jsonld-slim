@@ -1,1 +1,1 @@
-module.exports = require('./dist/jsonld');
+module.exports = require('./dist/node/jsonld');
