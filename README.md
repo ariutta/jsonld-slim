@@ -58,3 +58,33 @@ The following doesn't work at the moment because of the browser tests:
 Then run the tests: `npm test`
 
 If you're on Windows, you may need to instead run: `npm run test-windows`
+
+## Transfer to jsonld.js
+
+```
+cd jsonld-next
+mv package.json package.prod.json
+mv package.latest.json package.json
+rm -rf node_modules/jsonld
+npm install
+rm -rf ../jsonld.js/lib/*
+cp ./lib/* ../jsonld.js/lib/*
+cp ./dist/esnext/* ../jsonld.js/lib/*
+```
+
+Compare rollup.config.js, rollup.config.browser.js, rollup.config.node.js
+
+```
+cd ../jsonld.js
+npm run build
+```
+
+Go back to production in jsonld-next
+
+```
+cd ../jsonld-next
+mv package.json package.latest.json
+mv package.prod.json package.json
+rm -rf node_modules/jsonld
+npm install
+```

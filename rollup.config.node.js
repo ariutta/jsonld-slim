@@ -12,7 +12,6 @@ config.dest = 'dist/node/jsonld.js';
 
 config.outro = [
   config.outro || '',
-  //'global.jsonld = factory();',
   'factory.version = \'' + pkg.version + '\';'
 ].join('\n');
 
